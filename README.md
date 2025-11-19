@@ -1,4 +1,4 @@
-# attack-path-analyzer
+# Attack Path Analyzer (SOC-Helper)
 A SOC helper bot that analyzes a cybersecurity attack path
 
 ## Downloading the MITRE framework data
