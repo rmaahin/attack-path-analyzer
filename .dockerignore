@@ -1,0 +1,35 @@
+# Ignore Dataset
+data/
+
+# Ignore the virtual environment
+venv/
+.venv/
+env/
+.env
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# 3. Git & OS Files
+# Ignore the entire git history
+.git/
+.gitignore
+
+# Ignore IDE/editor configuration
+.vscode/
+.idea/
+
+# Ignore macOS files
+.DS_Store
+
+# 4. Logs & Artifacts
+# Ignore any log files or test reports
+*.log
+htmlcov/
+.coverage
+.pytest_cache/
+
+# SSH key
+**/.ssh
