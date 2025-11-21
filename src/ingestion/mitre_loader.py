@@ -5,7 +5,7 @@ from src.config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 MITRE_JSON_PATH = "data/mitre/enterprise-attack.json"
 
-class mitre_loader:
+class MITRELoader:
 
     def __init__(self, data_path):
         self.data_path = data_path
@@ -29,7 +29,6 @@ class mitre_loader:
         with open(self.data_path, 'r') as f:
             data = json.load(f)
 
-        counter = 0
         driver = db.get_driver()
         with driver.session(database="neo4j") as session:
             stix_objects = data['objects']
@@ -77,7 +76,7 @@ class mitre_loader:
             print("Warning: Driver is still open!")
 
 if __name__ == "__main__":
-       mitre_dataloader = mitre_loader(data_path = MITRE_JSON_PATH) 
+       mitre_dataloader = MITRELoader(data_path = MITRE_JSON_PATH) 
        mitre_dataloader.load_mitre_data()
     
         
