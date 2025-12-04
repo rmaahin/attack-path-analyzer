@@ -1,15 +1,22 @@
-FROM soc-helper:latest
+FROM nvidia/cuda:13.0.1-cudnn-devel-ubuntu24.04
 
-# 2. Set Environment Variables (Global Access)
-ENV PATH="/opt/env/bin:$PATH"
+ENV DEBIAN_FRONTEND=noninteractive
 
-# 3. Auto-activate for Interactive Shells
-RUN echo "source /opt/env/activate" >> ~/.bashrc
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# 4. Set the Working Directory
-# This acts as the default "cd". When you log in, you will land here
-# instead of the system root.
+ENV VIRTUAL_ENV=/opt/env
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
 WORKDIR /mnt
 
-# 6. Default Command
 CMD ["bash"]
