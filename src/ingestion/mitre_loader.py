@@ -32,40 +32,80 @@ class MITRELoader:
         driver = db.get_driver()
         with driver.session(database="neo4j") as session:
             stix_objects = data['objects']
-            for stix_object in tqdm(stix_objects, desc="Processing objects"):
-                if stix_object.get('type') == 'attack-pattern':
-                    technique_name = stix_object.get('name')
-                    description = stix_object.get('description', "No description.")
-                    external_references = stix_object.get('external_references', [])
-                    external_id = self.get_attack_id(external_references)
+            for stix_object in tqdm(stix_objects, desc="Creating nodes..."):
+                name = stix_object.get('name')
+                stix_id = stix_object.get('id')
+                description = stix_object.get('description', "No description.")
+                external_references = stix_object.get('external_references', [])
+                external_id = self.get_attack_id(external_references)
 
-                    # Creating Technique Nodes                
+                url = ""
+                if external_references:
+                    url = external_references[0].get('url', "")
                 
-                    url = ""
-                    if external_references:
-                        url = external_references[0].get('url', "")
-                        
-                    if external_id:
+                if stix_object.get('type') != 'relationship' and not external_id:
+                    continue
+                
+                if stix_object.get('type') == 'attack-pattern':                   
+
+                    # Creating Technique Nodes          
+                    query = """
+                    MERGE (t: Technique {stix_id: $stix_id})
+                    SET t.name = $name,
+                        t.id = $id,
+                        t.description = $desc,
+                        t.url = $url
+                    """
+                    session.run(query, stix_id=stix_id, name=name, id=external_id, desc=description, url=url)
+
+                    # Creating Tactice nodes and links
+                    kill_chain_phases = stix_object.get('kill_chain_phases', [])
+                    for kill_chain_phase in kill_chain_phases:
+                        phase_name = kill_chain_phase['phase_name']
+
                         query = """
-                        MERGE (t: Technique {id: $id})
-                        SET t.name = $name,
-                            t.description = $desc,
-                            t.url = $url
+                        MERGE (tac:Tactic {name: $tactic_name})
+                        WITH tac
+                        MATCH (t:Technique {id: $tech_id})
+                        MERGE (tac)-[:HAS_TECHNIQUE]->(t)
                         """
-                        session.run(query, id=external_id, name=technique_name, desc=description, url=url)
+                        session.run(query, tactic_name=phase_name, tech_id=external_id)
+                    
+                if stix_object.get('type') == 'intrusion-set':
+                    
+                    query = """
+                    MERGE (g: Group {stix_id: $stix_id})
+                    SET g.name = $name,
+                        g.id = $id,
+                        g.description = $desc,
+                        g.url = $url
+                    """
+                    session.run(query, stix_id=stix_id, name=name, id=external_id, desc=description, url=url)
 
-                        # Creating Tactice nodes and links
-                        kill_chain_phases = stix_object.get('kill_chain_phases', [])
-                        for kill_chain_phase in kill_chain_phases:
-                            phase_name = kill_chain_phase['phase_name']
+                if stix_object.get('type') == 'malware':
 
-                            query = """
-                            MERGE (tac:Tactic {name: $tactic_name})
-                            WITH tac
-                            MATCH (t:Technique {id: $tech_id})
-                            MERGE (tac)-[:HAS_TECHNIQUE]->(t)
-                            """
-                            session.run(query, tactic_name=phase_name, tech_id=external_id)
+                    query = """
+                    MERGE (m: Malware {stix_id: $stix_id})
+                    SET m.name = $name,
+                        m.id = $id,
+                        m.description = $desc,
+                        m.url = $url
+                    """
+                    session.run(query, stix_id=stix_id, name=name, id=external_id, desc=description, url=url)
+
+            for stix_object in tqdm(stix_objects, desc="Linking relationships..."):
+
+                if stix_object.get('type') == 'relationship' and stix_object.get('relationship_type') == 'uses':
+                                        
+                    source_ref = stix_object.get('source_ref')
+                    target_ref = stix_object.get('target_ref')
+                    query = """
+                    MATCH (a {stix_id: $src})
+                    MATCH (b {stix_id: $target})
+                    MERGE (a)-[:USES]->(b)
+                    """
+                    session.run(query, src=source_ref, target=target_ref)
+        
         db.close()
 
         is_closed = db.verify_closed()
