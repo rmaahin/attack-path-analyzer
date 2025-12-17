@@ -17,6 +17,8 @@ class OTXLoader:
         '''
             OTX data loader function.
         ''' 
+
+        clean_search_keyword = self.search_keyword.strip().lower()
         print(f"Searching the OTX database for keyword: {self.search_keyword} ...")
         pulse_results = self.otx.search_pulses(self.search_keyword, max_results=self.max_pulses).get('results', [])
 
@@ -29,16 +31,16 @@ class OTXLoader:
         driver = db.get_driver()
         with driver.session(database="neo4j") as session:
             for pulse in tqdm(pulse_results, desc='Processing pulses...'):
-                attack_ids = pulse.get('attack_ids', [])
-                if not attack_ids:
-                    continue
 
                 pulse_id = pulse.get('id')
                 author_name = pulse.get('author_name')
                 pulse_name = pulse.get('name')
                 created = pulse.get('created')
+
+                if not pulse_id:
+                    continue
                 
-                if pulse_id:
+                if clean_search_keyword in pulse_name.lower():
                     query = """
                     MERGE (p: Pulse {pulse_id: $pulse_id})
                     SET p.name = $pulse_name,
@@ -47,16 +49,27 @@ class OTXLoader:
                     """
                     session.run(query, pulse_id=pulse_id, pulse_name=pulse_name, author_name=author_name, created=created)
 
-                    if attack_ids:
-                        tqdm.write(f"Bridge found! Linking '{pulse_name} to {len(attack_ids)} MITRE techniques.")
-                        link_to_mitre_query = """
-                        MATCH (p: Pulse {pulse_id: $pulse_id})
-                        UNWIND $attack_ids AS tech_id
-                        MATCH (t: Technique {id: tech_id})
-                        MERGE (p)-[:RELATED_TO]->(t)
-                        """
-                        session.run(link_to_mitre_query, pulse_id=pulse_id, attack_ids=attack_ids)
+                    # Linking pulses to group nodes from mitre attack 
+                    pulse_group_query = """
+                    MATCH (p: Pulse {pulse_id: $pulse_id})
+                    MATCH (g: Group) WHERE toLower(g.name) CONTAINS $keyword
+                    MERGE (p)-[:ATTRIBUTED_TO]->(g)        
+                    RETURN g.name as matched_name
+                    """
+                    pulse_group_query_result = session.run(pulse_group_query, pulse_id=pulse_id, keyword=clean_search_keyword)
+                    if pulse_group_query_result.peek():
+                        tqdm.write(f"Linked to Group: {pulse_group_query_result.single()['matched_name']}")
 
+                    # Linking pulses to malware nodes from mitre attack
+                    pulse_malware_query = """
+                    MATCH (p: Pulse {pulse_id: $pulse_id})
+                    MATCH (m: Malware) WHERE toLower(m.name) CONTAINS $keyword
+                    MERGE (p)-[:TARGETS_VIA_MALWARE]-(m)
+                    RETURN m.name as matched_name
+                    """
+                    pulse_malware_query_result = session.run(pulse_malware_query, pulse_id=pulse_id, keyword=clean_search_keyword)
+                    if pulse_malware_query_result.peek():
+                        tqdm.write(f"Linked to Malware: {pulse_malware_query_result.single()['matched_name']}")
 
                     indicators_results = self.otx.get_pulse_indicators(pulse_id)
                     for ioc in indicators_results:
@@ -89,9 +102,18 @@ class OTXLoader:
                             session.run(filehash_ioc_query, pulse_id=pulse_id, filehash=ioc_value)
                         else:
                             continue
+        db.close()
+
+        is_closed = db.verify_closed()
+
+        if is_closed:
+            print("Confirmed: Driver is closed.")
+        else:
+            print("Warning: Driver is still open!")
+
 if __name__ == "__main__":
 
-    search_keyword = "Ransomware"
+    search_keyword = "Cobalt Strike"
     max_pulses = 100
     otx_loader = OTXLoader(search_keyword, max_pulses)
     otx_loader.load_otx_pulses()
