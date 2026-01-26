@@ -1,9 +1,13 @@
+import argparse
 import OTXv2
 from tqdm import tqdm
 from src.config import OTX_API_KEY
 from src.database.connector import db
 
 class OTXLoader:
+    '''
+        Loads OTX pulse data into our graph database.
+    '''
 
     def __init__(self, search_keyword: str, max_pulses: int):
         self.search_keyword = search_keyword
@@ -13,10 +17,7 @@ class OTXLoader:
         if not OTX_API_KEY:
             raise ValueError("OTX_API_KEY is missing!") 
 
-    def load_otx_pulses(self):
-        '''
-            OTX data loader function.
-        ''' 
+    def load_otx_pulses(self): 
 
         clean_search_keyword = self.search_keyword.strip().lower()
         print(f"Searching the OTX database for keyword: {self.search_keyword} ...")
@@ -36,18 +37,23 @@ class OTXLoader:
                 author_name = pulse.get('author_name')
                 pulse_name = pulse.get('name')
                 created = pulse.get('created')
+                pulse_description = pulse.get('description')
+
+                if pulse_description is None:
+                    pulse_description = ""
 
                 if not pulse_id:
                     continue
                 
-                if clean_search_keyword in pulse_name.lower():
+                if (clean_search_keyword in pulse_name.lower()) or (clean_search_keyword in pulse_description.lower()):
                     query = """
                     MERGE (p: Pulse {pulse_id: $pulse_id})
                     SET p.name = $pulse_name,
                         p.author_name = $author_name,
-                        p.created = $created
+                        p.created = $created,
+                        p.description = $description
                     """
-                    session.run(query, pulse_id=pulse_id, pulse_name=pulse_name, author_name=author_name, created=created)
+                    session.run(query, pulse_id=pulse_id, pulse_name=pulse_name, author_name=author_name, created=created, description=pulse_description)
 
                     # Linking pulses to group nodes from mitre attack 
                     pulse_group_query = """
@@ -64,7 +70,7 @@ class OTXLoader:
                     pulse_malware_query = """
                     MATCH (p: Pulse {pulse_id: $pulse_id})
                     MATCH (m: Malware) WHERE toLower(m.name) CONTAINS $keyword
-                    MERGE (p)-[:TARGETS_VIA_MALWARE]-(m)
+                    MERGE (p)-[:TARGETS_VIA_MALWARE]->(m)
                     RETURN m.name as matched_name
                     """
                     pulse_malware_query_result = session.run(pulse_malware_query, pulse_id=pulse_id, keyword=clean_search_keyword)
@@ -112,9 +118,14 @@ class OTXLoader:
             print("Warning: Driver is still open!")
 
 if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description="Connecting OTX pulses to MITRE nodes.")
+    parser.add_argument("search_keyword", metavar="search-keyword", help="Keyword to be searched for in the OTX pulse library.")
+    parser.add_argument("-mp", "--max_pulses", help="Maximum number of pulses to be considered from the search results. Default is 100.", default=100, type=int)
+    args = parser.parse_args()
 
-    search_keyword = "Cobalt Strike"
-    max_pulses = 100
+    search_keyword = args.search_keyword
+    max_pulses = args.max_pulses
     otx_loader = OTXLoader(search_keyword, max_pulses)
     otx_loader.load_otx_pulses()
 
