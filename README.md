@@ -42,7 +42,7 @@ This project helps security operations teams visualize and understand attack pat
 └─────────────────┘
 ```
 
-## 📊 Graph Schema
+## Graph Schema
 
 The knowledge graph contains the following node types and relationships:
 
@@ -70,7 +70,7 @@ The knowledge graph contains the following node types and relationships:
 - `(Device)-[:RAN_PROCESS]->(Process)`
 - `(User)-[:LOGGED_ON_TO]->(Device)`
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -162,6 +162,8 @@ This loads:
 
 ### 3. Load Security Event Logs
 
+A synthetic snippet of the Splunk BOTS dataset ('emotet_sample.json') is provided for prototyping and testing.
+
 ```bash
 python -m src.ingestion.splunk_bots_loader
 ```
@@ -200,7 +202,7 @@ print(answer)
 5. **Technique usage by groups:**
    - "What techniques does APT28 use?"
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 attack-path-analyzer/
