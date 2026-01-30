@@ -79,25 +79,25 @@ class SentinelGraph:
         except Exception as e:
             return (f"Unexpected error occurred: {str(e)}")
 
-    def graph_query_tool(self, question) -> str:
+    def graph_query_tool(self) -> str:
         """
         Queries the LLM with the graph knowledge base attached.
         """
         return Tool(
-            name="Graph Search",
+            name="Graph_Search",
             func=self.graph_query,
             description="Use this tool to look up data in the Neo4j database. Input: A clear question about users, devices, IPs, or malware."
         )
 
-if __name__=="__main__":
+# if __name__=="__main__":
 
-    model_name = "llama-3.3-70b-versatile"
-    temperature = 0     # Dont want creativity here
+#     model_name = "llama-3.3-70b-versatile"
+#     temperature = 0     # Dont want creativity here
 
-    SentinelGraph_obj = SentinelGraph(model_name=model_name, temperature=temperature)
+#     SentinelGraph_obj = SentinelGraph(model_name=model_name, temperature=temperature)
 
-    test_question = "Can you tell me the devices that are affected my 'Emotet' malware and the IPs they communicated with?"
-    print(f"Testing question: {test_question}")
+#     test_question = "What techniques does APT28 use?"
+#     print(f"Testing question: {test_question}")
 
-    answer = SentinelGraph_obj.graph_query(test_question)
-    print(f"Answer: {answer}")
+#     answer = SentinelGraph_obj.graph_query(test_question)
+#     print(f"Answer: {answer}")
