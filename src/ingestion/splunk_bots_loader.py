@@ -82,6 +82,6 @@ class SplunkBOTSLoader:
 
 if __name__ == "__main__":
 
-    log_path = '/mnt/data/splunk_bots/sample.json'
+    log_path = '/mnt/data/splunk_bots/emotet_sample.json'
     splunk_loader = SplunkBOTSLoader(log_path)
     splunk_loader.load_logs()
