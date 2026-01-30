@@ -8,7 +8,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.memory import MemorySaver
 
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
 from langchain_groq import ChatGroq
 
 from src.agent.query_graph import SentinelGraph
@@ -48,25 +48,54 @@ class QueryingAgent:
 
         self.app = self.build_graph()
 
+    def has_tool_been_called(self, state: AgentState) -> bool:
+        """
+        Check if the Graph_Search tool has already been called in this conversation turn.
+        """
+        messages = state["messages"]
+
+        for msg in reversed(messages):
+            if isinstance(msg, ToolMessage):
+                return True
+            if isinstance(msg, HumanMessage):
+                break
+        
+        return False
+
     def chatbot_node(self, state: AgentState):
         """
         The main node that talks to the querying LLM.
         Takes the history of the conversation, sends it to the LLM and retrieves a response.
         """
-        system_instruction = SystemMessage(content=(
-            "You are a cybersecurity analyst. Answer the user's question using the 'Graph_Search' tool."
-            "\n\nRULES:"
-            "\n1. Answer ONLY the specific question asked."
-            "\n2. Do NOT volunteer extra information (like Tactics/Mitigations) unless explicitly asked."
-            "\n3. Once you have the answer, output it and STOP. Do not verify it again."
-        ))
+        
+        tool_already_used = self.has_tool_been_called(state)
+        
+        if tool_already_used:
+            system_instruction = SystemMessage(content=(
+                "You are a cybersecurity analyst. The Graph_Search tool has already been executed and returned results."
+                "\n\nYour task now:"
+                "\n1. Review the tool results that were just returned."
+                "\n2. Provide a clear, concise answer to the user's question based on those results."
+                "\n3. Do NOT call any tools again - just answer the question."
+                "\n4. Be specific and use the actual data from the results."
+            ))
+        else:
+            system_instruction = SystemMessage(content=(
+                "You are a cybersecurity analyst with access to a graph database via the 'Graph_Search' tool."
+                "\n\nYour task:"
+                "\n1. Use the Graph_Search tool to query the database for the requested information."
+                "\n2. Call the tool once with a clear question."
+                "\n3. Wait for the results before answering."
+            ))
+        
         messages = [system_instruction] + state["messages"]
         response = self.llm_with_tools.invoke(messages)
+        
 
-        if response.content and response.tool_calls:
-            print("DETECTED HYBRID RESPONSE (Answer + Hallucinated Tool). Stripping tool call.")
+        if tool_already_used and response.tool_calls:
+            print("Tool already executed - preventing redundant call")
             response.tool_calls = []
-
+        
         return {"messages": [response]}
     
     def should_continue(self, state: AgentState):
