@@ -1,4 +1,4 @@
-# SentinelGraph: 
+# SentinelGraph
 
 A cybersecurity intelligence platform that analyzes attack paths by integrating MITRE ATT&CK framework, threat intelligence from AlienVault OTX, and security event logs into a Neo4j graph database. The system uses LLM-powered agents to provide natural language querying capabilities for SOC analysts.
 
