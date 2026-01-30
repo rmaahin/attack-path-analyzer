@@ -1,0 +1,54 @@
+[
+  {
+    "timestamp": "2024-06-12T09:15:00Z",
+    "event_type": "authentication",
+    "host": "FINANCE-WS-04",
+    "src_ip": "192.168.10.55",
+    "user": "alice.finance",
+    "action": "success",
+    "description": "User login successful."
+  },
+  {
+    "timestamp": "2024-06-12T09:18:22Z",
+    "event_type": "process_execution",
+    "host": "FINANCE-WS-04",
+    "user": "alice.finance",
+    "process_name": "powershell.exe",
+    "command_line": "powershell.exe -NoP -NonI -W Hidden -Enc ...",
+    "pid": 5112,
+    "description": "Suspicious PowerShell execution."
+  },
+  {
+    "timestamp": "2024-06-12T09:18:25Z",
+    "event_type": "network_connection",
+    "host": "FINANCE-WS-04",
+    "src_ip": "192.168.10.55",
+    "dest_ip": "185.7.214.12", 
+    "protocol": "tcp",
+    "dest_port": 8080,
+    "action": "allowed",
+    "description": "Initial C2 Beacon."
+  },
+  {
+    "timestamp": "2024-06-12T09:45:00Z",
+    "event_type": "network_connection",
+    "host": "FINANCE-WS-04",
+    "src_ip": "192.168.10.55",
+    "dest_ip": "158.69.199.223", 
+    "protocol": "tcp",
+    "dest_port": 443,
+    "action": "allowed",
+    "description": "Secondary C2 Beacon to fallback server."
+  },
+  {
+    "timestamp": "2024-06-12T10:00:00Z",
+    "event_type": "network_connection",
+    "host": "FINANCE-WS-04",
+    "src_ip": "192.168.10.55",
+    "dest_ip": "192.81.212.79", 
+    "protocol": "tcp",
+    "dest_port": 80,
+    "action": "blocked",
+    "description": "Attempted connection to known malicious node."
+  }
+]
